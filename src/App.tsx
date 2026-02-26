@@ -15,11 +15,30 @@ import {
   ArrowLeft,
   Navigation,
   CheckCircle2,
-  Sparkles
+  Sparkles,
+  LayoutDashboard,
+  Trash2,
+  Edit,
+  Save,
+  Database,
+  Settings,
+  ArrowRight,
+  Lock,
+  LogIn,
+  LogOut
 } from 'lucide-react';
 import { RESTAURANTS, MENU_ITEMS } from './constants';
 import { Restaurant, MenuItem, CartItem, Order, Location, LocationRequest, DeliveryRoute } from './types';
-import { useLocations, useDeliveryRoute } from './services/deliveryService';
+import { 
+  useLocations, 
+  useDeliveryRoute,
+  createLocation,
+  updateLocation,
+  deleteLocation,
+  createDeliveryRoute,
+  updateDeliveryRoute,
+  deleteDeliveryRoute
+} from './services/deliveryService';
 import { GoogleGenAI } from "@google/genai";
 
 const ScrollToTop = () => {
@@ -897,10 +916,422 @@ const DeliveryRoutesPage = () => {
 };
 
 
+const LoginPage = ({ onLogin }: { onLogin: () => void }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    // Simple mock authentication
+    if (email === 'admin@jeetk.com' && password === 'admin123') {
+      onLogin();
+      navigate('/dashboard');
+    } else {
+      setError('Invalid email or password. Hint: admin@jeetk.com / admin123');
+    }
+  };
+
+  return (
+    <div className="max-w-md mx-auto px-4 py-20">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white p-8 rounded-3xl border border-zinc-100 shadow-xl"
+      >
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Lock className="w-8 h-8 text-primary" />
+          </div>
+          <h1 className="text-2xl font-bold">Admin Login</h1>
+          <p className="text-zinc-500 text-sm">Enter your credentials to access the dashboard</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-bold mb-1.5 ml-1">Email Address</label>
+            <input 
+              type="email" 
+              className="w-full px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+              placeholder="admin@jeetk.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-bold mb-1.5 ml-1">Password</label>
+            <input 
+              type="password" 
+              className="w-full px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+          
+          {error && (
+            <p className="text-red-500 text-xs font-medium bg-red-50 p-3 rounded-lg">{error}</p>
+          )}
+
+          <button 
+            type="submit" 
+            className="w-full bg-black text-white py-4 rounded-xl font-bold hover:scale-[1.02] transition-transform flex items-center justify-center gap-2"
+          >
+            <LogIn className="w-5 h-5" />
+            Sign In
+          </button>
+        </form>
+      </motion.div>
+    </div>
+  );
+};
+
+const Dashboard = ({ onLogout }: { onLogout: () => void }) => {
+  const [activeTab, setActiveTab] = useState<'overview' | 'locations' | 'routes'>('overview');
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    const isAuth = localStorage.getItem('jeetk_admin_auth') === 'true';
+    if (!isAuth) {
+      navigate('/login');
+    }
+  }, [navigate]);
+
+  const { data: locationsData = [], refetch: refetchLocations } = useLocations();
+  const locations = Array.isArray(locationsData) ? locationsData : [];
+
+  // Form states
+  const [editingLocation, setEditingLocation] = useState<Location | null>(null);
+  const [newLocation, setNewLocation] = useState<Omit<Location, 'id'>>({ name: '', address: '', image: '', googleMapsUrl: '' });
+  
+  const [selectedOriginId, setSelectedOriginId] = useState<string | null>(null);
+  const { data: routesData = [], refetch: refetchRoutes } = useDeliveryRoute(selectedOriginId);
+  const routes = Array.isArray(routesData) ? routesData : [];
+  
+  const [newRoute, setNewRoute] = useState<Omit<DeliveryRoute, 'id'>>({ 
+    origin: '', 
+    destination: '', 
+    distance: '', 
+    price: 0, 
+    isAvailable: true 
+  });
+
+  const handleCreateLocation = async (e: FormEvent) => {
+    e.preventDefault();
+    try {
+      await createLocation(newLocation);
+      setNewLocation({ name: '', address: '', image: '', googleMapsUrl: '' });
+      refetchLocations();
+      alert('Location created successfully!');
+    } catch (err) {
+      alert('Failed to create location');
+    }
+  };
+
+  const handleDeleteLocation = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this location?')) return;
+    try {
+      await deleteLocation(id);
+      refetchLocations();
+    } catch (err) {
+      alert('Failed to delete location');
+    }
+  };
+
+  const handleCreateRoute = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!selectedOriginId) return;
+    const originName = locations.find(l => l.id === selectedOriginId)?.name || '';
+    try {
+      await createDeliveryRoute({ ...newRoute, origin: originName });
+      setNewRoute({ origin: '', destination: '', distance: '', price: 0, isAvailable: true });
+      refetchRoutes();
+      alert('Route created successfully!');
+    } catch (err) {
+      alert('Failed to create route');
+    }
+  };
+
+  const handleDeleteRoute = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this route?')) return;
+    try {
+      await deleteDeliveryRoute(id);
+      refetchRoutes();
+    } catch (err) {
+      alert('Failed to delete route');
+    }
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 py-8 min-h-screen">
+      <div className="flex flex-col md:flex-row gap-8">
+        {/* Sidebar */}
+        <div className="w-full md:w-64 flex flex-col gap-2">
+          <div className="p-4 mb-4 bg-primary/10 rounded-2xl">
+            <h2 className="font-bold text-primary flex items-center gap-2">
+              <LayoutDashboard className="w-5 h-5" />
+              Admin Dashboard
+            </h2>
+          </div>
+          <button 
+            onClick={() => setActiveTab('overview')}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === 'overview' ? 'bg-black text-white' : 'hover:bg-zinc-100 text-zinc-600'}`}
+          >
+            <Database className="w-4 h-4" /> Overview
+          </button>
+          <button 
+            onClick={() => setActiveTab('locations')}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === 'locations' ? 'bg-black text-white' : 'hover:bg-zinc-100 text-zinc-600'}`}
+          >
+            <MapPin className="w-4 h-4" /> Manage Locations
+          </button>
+          <button 
+            onClick={() => setActiveTab('routes')}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === 'routes' ? 'bg-black text-white' : 'hover:bg-zinc-100 text-zinc-600'}`}
+          >
+            <Navigation className="w-4 h-4" /> Manage Routes
+          </button>
+          
+          <div className="mt-auto pt-4 border-t border-zinc-100">
+            <button 
+              onClick={() => {
+                onLogout();
+                navigate('/login');
+              }}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-all"
+            >
+              <LogOut className="w-4 h-4" /> Sign Out
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1">
+          {activeTab === 'overview' && (
+            <div className="space-y-8">
+              <h1 className="text-3xl font-bold">System Overview</h1>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="p-6 bg-white border border-zinc-100 rounded-3xl shadow-sm">
+                  <p className="text-zinc-500 text-sm mb-1">Total Locations</p>
+                  <p className="text-4xl font-black">{locations.length}</p>
+                </div>
+                <div className="p-6 bg-white border border-zinc-100 rounded-3xl shadow-sm">
+                  <p className="text-zinc-500 text-sm mb-1">Active Hubs</p>
+                  <p className="text-4xl font-black text-emerald-500">{locations.length}</p>
+                </div>
+                <div className="p-6 bg-white border border-zinc-100 rounded-3xl shadow-sm">
+                  <p className="text-zinc-500 text-sm mb-1">System Status</p>
+                  <p className="text-xl font-bold text-emerald-500 flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5" /> Operational
+                  </p>
+                </div>
+              </div>
+              
+              <div className="p-8 bg-zinc-900 text-white rounded-3xl">
+                <h3 className="text-xl font-bold mb-4">Quick Actions</h3>
+                <div className="flex flex-wrap gap-4">
+                  <button onClick={() => setActiveTab('locations')} className="px-6 py-3 bg-white text-black rounded-xl font-bold text-sm hover:scale-105 transition-transform">
+                    Add New Hub
+                  </button>
+                  <button onClick={() => setActiveTab('routes')} className="px-6 py-3 bg-primary text-white rounded-xl font-bold text-sm hover:scale-105 transition-transform">
+                    Update Pricing
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'locations' && (
+            <div className="space-y-8">
+              <div className="flex justify-between items-center">
+                <h1 className="text-3xl font-bold">Manage Locations</h1>
+              </div>
+
+              {/* Add Location Form */}
+              <div className="p-6 bg-white border border-zinc-100 rounded-3xl shadow-sm">
+                <h3 className="font-bold mb-4">Add New Location</h3>
+                <form onSubmit={handleCreateLocation} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <input 
+                    type="text" placeholder="Location Name (e.g. Berlin Mitte)" 
+                    className="px-4 py-2 bg-zinc-50 rounded-xl border border-zinc-100 text-sm"
+                    value={newLocation.name} onChange={e => setNewLocation({...newLocation, name: e.target.value})}
+                    required
+                  />
+                  <input 
+                    type="text" placeholder="Full Address" 
+                    className="px-4 py-2 bg-zinc-50 rounded-xl border border-zinc-100 text-sm"
+                    value={newLocation.address} onChange={e => setNewLocation({...newLocation, address: e.target.value})}
+                    required
+                  />
+                  <input 
+                    type="url" placeholder="Image URL (optional)" 
+                    className="px-4 py-2 bg-zinc-50 rounded-xl border border-zinc-100 text-sm"
+                    value={newLocation.image} onChange={e => setNewLocation({...newLocation, image: e.target.value})}
+                  />
+                  <input 
+                    type="url" placeholder="Google Maps URL (optional)" 
+                    className="px-4 py-2 bg-zinc-50 rounded-xl border border-zinc-100 text-sm"
+                    value={newLocation.googleMapsUrl} onChange={e => setNewLocation({...newLocation, googleMapsUrl: e.target.value})}
+                  />
+                  <button type="submit" className="md:col-span-2 bg-black text-white py-3 rounded-xl font-bold hover:bg-zinc-800 transition-colors">
+                    Create Location
+                  </button>
+                </form>
+              </div>
+
+              {/* Locations List */}
+              <div className="bg-white border border-zinc-100 rounded-3xl overflow-hidden shadow-sm">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="bg-zinc-50 border-b border-zinc-100">
+                      <th className="px-6 py-4 font-bold text-sm">Name</th>
+                      <th className="px-6 py-4 font-bold text-sm">Address</th>
+                      <th className="px-6 py-4 font-bold text-sm text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-50">
+                    {locations.map(loc => (
+                      <tr key={loc.id} className="hover:bg-zinc-50/50 transition-colors">
+                        <td className="px-6 py-4 text-sm font-medium">{loc.name}</td>
+                        <td className="px-6 py-4 text-sm text-zinc-500 truncate max-w-xs">{loc.address}</td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button className="p-2 text-zinc-400 hover:text-black transition-colors">
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => handleDeleteLocation(loc.id)} className="p-2 text-zinc-400 hover:text-red-500 transition-colors">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'routes' && (
+            <div className="space-y-8">
+              <h1 className="text-3xl font-bold">Manage Delivery Routes</h1>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Select Origin to Manage */}
+                <div className="p-6 bg-white border border-zinc-100 rounded-3xl shadow-sm">
+                  <h3 className="font-bold mb-4">1. Select Origin Hub</h3>
+                  <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2">
+                    {locations.map(loc => (
+                      <button 
+                        key={loc.id}
+                        onClick={() => setSelectedOriginId(loc.id)}
+                        className={`w-full text-left px-4 py-2 rounded-lg text-sm transition-all ${selectedOriginId === loc.id ? 'bg-primary text-white font-bold' : 'bg-zinc-50 hover:bg-zinc-100'}`}
+                      >
+                        {loc.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Add Route Form */}
+                <div className={`p-6 bg-white border border-zinc-100 rounded-3xl shadow-sm transition-opacity ${!selectedOriginId ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+                  <h3 className="font-bold mb-4">2. Add Route from {locations.find(l => l.id === selectedOriginId)?.name || '...'}</h3>
+                  <form onSubmit={handleCreateRoute} className="space-y-4">
+                    <input 
+                      type="text" placeholder="Destination Name" 
+                      className="w-full px-4 py-2 bg-zinc-50 rounded-xl border border-zinc-100 text-sm"
+                      value={newRoute.destination} onChange={e => setNewRoute({...newRoute, destination: e.target.value})}
+                      required
+                    />
+                    <div className="grid grid-cols-2 gap-4">
+                      <input 
+                        type="text" placeholder="Distance (e.g. 5 km)" 
+                        className="px-4 py-2 bg-zinc-50 rounded-xl border border-zinc-100 text-sm"
+                        value={newRoute.distance} onChange={e => setNewRoute({...newRoute, distance: e.target.value})}
+                        required
+                      />
+                      <input 
+                        type="number" step="0.01" placeholder="Price" 
+                        className="px-4 py-2 bg-zinc-50 rounded-xl border border-zinc-100 text-sm"
+                        value={newRoute.price} onChange={e => setNewRoute({...newRoute, price: parseFloat(e.target.value)})}
+                        required
+                      />
+                    </div>
+                    <button type="submit" className="w-full bg-black text-white py-3 rounded-xl font-bold hover:bg-zinc-800 transition-colors">
+                      Add Route
+                    </button>
+                  </form>
+                </div>
+              </div>
+
+              {/* Routes List */}
+              {selectedOriginId && (
+                <div className="bg-white border border-zinc-100 rounded-3xl overflow-hidden shadow-sm">
+                  <div className="px-6 py-4 border-b border-zinc-100 bg-zinc-50 flex justify-between items-center">
+                    <h3 className="font-bold">Active Routes from {locations.find(l => l.id === selectedOriginId)?.name}</h3>
+                    <span className="text-xs text-zinc-500">{routes.length} routes found</span>
+                  </div>
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="border-b border-zinc-100">
+                        <th className="px-6 py-4 font-bold text-sm">Destination</th>
+                        <th className="px-6 py-4 font-bold text-sm">Distance</th>
+                        <th className="px-6 py-4 font-bold text-sm">Price</th>
+                        <th className="px-6 py-4 font-bold text-sm text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-50">
+                      {routes.map(route => (
+                        <tr key={route.id} className="hover:bg-zinc-50/50 transition-colors">
+                          <td className="px-6 py-4 text-sm font-medium">{route.destination}</td>
+                          <td className="px-6 py-4 text-sm text-zinc-500">{route.distance}</td>
+                          <td className="px-6 py-4 text-sm font-bold">${route.price.toFixed(2)}</td>
+                          <td className="px-6 py-4 text-right">
+                            <button onClick={() => handleDeleteRoute(route.id)} className="p-2 text-zinc-400 hover:text-red-500 transition-colors">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {routes.length === 0 && (
+                        <tr>
+                          <td colSpan={4} className="px-6 py-8 text-center text-zinc-400 italic text-sm">
+                            No routes configured for this origin yet.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // --- Main App ---
 
 export default function App() {
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return localStorage.getItem('jeetk_admin_auth') === 'true';
+  });
+
+  const handleLogin = () => {
+    localStorage.setItem('jeetk_admin_auth', 'true');
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('jeetk_admin_auth');
+    setIsAuthenticated(false);
+  };
 
   const addToCart = (item: MenuItem) => {
     setCart(prev => {
@@ -938,6 +1369,8 @@ export default function App() {
             <Route path="/tracking" element={<TrackingPage />} />
             <Route path="/locations" element={<LocationsPage />} />
             <Route path="/routes" element={<DeliveryRoutesPage />} />
+            <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
+            <Route path="/dashboard" element={<Dashboard onLogout={handleLogout} />} />
           </Routes>
         </main>
 
