@@ -1,4 +1,4 @@
-import { useState, useEffect, FC, FormEvent } from 'react';
+import { useState, useEffect, FC, FormEvent, createContext, useContext } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -25,10 +25,12 @@ import {
   ArrowRight,
   Lock,
   LogIn,
-  LogOut
+  LogOut,
+  Globe
 } from 'lucide-react';
 import { RESTAURANTS, MENU_ITEMS } from './constants';
 import { Restaurant, MenuItem, CartItem, Order, Location, LocationRequest, DeliveryRoute } from './types';
+import { translations, Language } from './i18n';
 import { 
   useLocations, 
   useDeliveryRoute,
@@ -40,6 +42,20 @@ import {
   deleteDeliveryRoute
 } from './services/deliveryService';
 import { GoogleGenAI } from "@google/genai";
+
+interface LanguageContextType {
+  language: Language;
+  setLanguage: (lang: Language) => void;
+  t: typeof translations.en;
+}
+
+const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+
+const useLanguage = () => {
+  const context = useContext(LanguageContext);
+  if (!context) throw new Error('useLanguage must be used within a LanguageProvider');
+  return context;
+};
 
 const ScrollToTop = () => {
   const { pathname } = useParams();
@@ -90,93 +106,112 @@ const JeetkLogo = ({ className = "w-8 h-8" }: { className?: string }) => (
   </svg>
 );
 
-const Navbar = ({ cartCount, isAuthenticated }: { cartCount: number, isAuthenticated: boolean }) => (
-  <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-black/5">
-    <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-      <Link to="/" className="text-2xl font-bold tracking-tighter flex items-center gap-2">
-        <JeetkLogo className="w-10 h-10" />
-        <span className="logo-gradient">Jeetk</span>
-      </Link>
-      
-      <div className="hidden md:flex items-center gap-2 bg-zinc-100 px-3 py-1.5 rounded-full text-sm font-medium">
-        <MapPin className="w-4 h-4" />
-        <span>Deliver to: 123 Main St, Berlin</span>
-      </div>
-
-      <div className="flex items-center gap-4">
-        <Link to="/locations" className="text-sm font-medium hover:text-black transition-colors hidden sm:block">
-          Locations
-        </Link>
-        <Link to="/routes" className="text-sm font-medium hover:text-primary transition-colors hidden sm:block">
-          Delivery Prices
-        </Link>
-        <button className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
-          <Search className="w-5 h-5" />
-        </button>
-        <Link to="/cart" className="relative p-2 hover:bg-zinc-100 rounded-full transition-colors">
-          <ShoppingBag className="w-5 h-5" />
-          {cartCount > 0 && (
-            <span className="absolute top-0 right-0 bg-black text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
-              {cartCount}
-            </span>
-          )}
+const Navbar = ({ cartCount, isAuthenticated }: { 
+  cartCount: number, 
+  isAuthenticated: boolean
+}) => {
+  const { language, setLanguage, t } = useLanguage();
+  
+  return (
+    <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-black/5">
+      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+        <Link to="/" className="text-2xl font-bold tracking-tighter flex items-center gap-2">
+          <JeetkLogo className="w-10 h-10" />
+          <span className="logo-gradient">Jeetk</span>
         </Link>
         
-        {isAuthenticated ? (
-          <Link 
-            to="/dashboard" 
-            className="bg-black text-white px-4 py-2 rounded-xl text-sm font-bold hover:scale-105 transition-transform flex items-center gap-2"
+        <div className="hidden md:flex items-center gap-2 bg-zinc-100 px-3 py-1.5 rounded-full text-sm font-medium">
+          <MapPin className="w-4 h-4" />
+          <span>{t.nav.deliverTo}</span>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}
+            className="flex items-center gap-2 px-3 py-1.5 hover:bg-zinc-100 rounded-full transition-colors text-sm font-bold"
           >
-            <LayoutDashboard className="w-4 h-4" />
-            Dashboard
+            <Globe className="w-4 h-4" />
+            <span>{language === 'en' ? 'العربية' : 'English'}</span>
+          </button>
+
+          <Link to="/locations" className="text-sm font-medium hover:text-black transition-colors hidden sm:block">
+            {t.nav.locations}
           </Link>
-        ) : (
-          <Link 
-            to="/login" 
-            className="bg-zinc-100 text-black px-4 py-2 rounded-xl text-sm font-bold hover:bg-zinc-200 transition-colors flex items-center gap-2"
-          >
-            <LogIn className="w-4 h-4" />
-            Login
+          <Link to="/routes" className="text-sm font-medium hover:text-primary transition-colors hidden sm:block">
+            {t.nav.deliveryPrices}
           </Link>
-        )}
+          <button className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
+            <Search className="w-5 h-5" />
+          </button>
+          <Link to="/cart" className="relative p-2 hover:bg-zinc-100 rounded-full transition-colors">
+            <ShoppingBag className="w-5 h-5" />
+            {cartCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-black text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
+                {cartCount}
+              </span>
+            )}
+          </Link>
+          
+          {isAuthenticated ? (
+            <Link 
+              to="/dashboard" 
+              className="bg-black text-white px-4 py-2 rounded-xl text-sm font-bold hover:scale-105 transition-transform flex items-center gap-2"
+            >
+              <LayoutDashboard className="w-4 h-4" />
+              {t.nav.dashboard}
+            </Link>
+          ) : (
+            <Link 
+              to="/login" 
+              className="bg-zinc-100 text-black px-4 py-2 rounded-xl text-sm font-bold hover:bg-zinc-200 transition-colors flex items-center gap-2"
+            >
+              <LogIn className="w-4 h-4" />
+              {t.nav.login}
+            </Link>
+          )}
+        </div>
       </div>
-    </div>
-  </nav>
-);
+    </nav>
+  );
+};
 
 interface RestaurantCardProps {
   restaurant: Restaurant;
 }
 
-const RestaurantCard: FC<RestaurantCardProps> = ({ restaurant }) => (
-  <Link to={`/restaurant/${restaurant.id}`} className="group">
-    <div className="relative aspect-[4/3] overflow-hidden rounded-2xl mb-3">
-      <img 
-        src={restaurant.image} 
-        alt={restaurant.name}
-        className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
-        referrerPolicy="no-referrer"
-      />
-      <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1">
-        <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-        {restaurant.rating}
+const RestaurantCard: FC<RestaurantCardProps> = ({ restaurant }) => {
+  const { t } = useLanguage();
+  return (
+    <Link to={`/restaurant/${restaurant.id}`} className="group">
+      <div className="relative aspect-[4/3] overflow-hidden rounded-2xl mb-3">
+        <img 
+          src={restaurant.image} 
+          alt={restaurant.name}
+          className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
+          referrerPolicy="no-referrer"
+        />
+        <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1">
+          <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+          {restaurant.rating}
+        </div>
       </div>
-    </div>
-    <div className="flex justify-between items-start">
-      <div>
-        <h3 className="font-semibold text-lg">{restaurant.name}</h3>
-        <p className="text-zinc-500 text-sm">{restaurant.category} • {restaurant.deliveryTime}</p>
+      <div className="flex justify-between items-start">
+        <div className="text-start">
+          <h3 className="font-semibold text-lg">{restaurant.name}</h3>
+          <p className="text-zinc-500 text-sm">{restaurant.category} • {restaurant.deliveryTime}</p>
+        </div>
+        <div className="text-end">
+          <p className="text-sm font-medium">{restaurant.deliveryFee === 0 ? t.home.freeDelivery : `$${restaurant.deliveryFee} ${t.home.deliveryFee}`}</p>
+        </div>
       </div>
-      <div className="text-right">
-        <p className="text-sm font-medium">{restaurant.deliveryFee === 0 ? 'Free Delivery' : `$${restaurant.deliveryFee} Delivery`}</p>
-      </div>
-    </div>
-  </Link>
-);
+    </Link>
+  );
+};
 
 // --- Pages ---
 
 const HomePage = () => {
+  const { t, language } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [aiResponse, setAiResponse] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -194,11 +229,11 @@ const HomePage = () => {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: `You are a helpful food delivery assistant. Suggest 2-3 specific dishes or restaurant types from our platform (Burgers, Sushi, Pizza, Salads, Desserts) based on this user request: "${prompt}". Keep it concise and appetizing.`,
+        contents: `You are a helpful food delivery assistant. Suggest 2-3 specific dishes or restaurant types from our platform (Burgers, Sushi, Pizza, Salads, Desserts) based on this user request: "${prompt}". Keep it concise and appetizing. Respond in ${language === 'ar' ? 'Arabic' : 'English'}.`,
       });
-      setAiResponse(response.text || 'Sorry, I couldn\'t think of anything right now.');
+      setAiResponse(response.text || (language === 'ar' ? 'عذراً، لم أتمكن من العثور على شيء حالياً.' : 'Sorry, I couldn\'t think of anything right now.'));
     } catch (error) {
-      setAiResponse('Error connecting to AI assistant.');
+      setAiResponse(language === 'ar' ? 'خطأ في الاتصال بمساعد الذكاء الاصطناعي.' : 'Error connecting to AI assistant.');
     } finally {
       setIsAiLoading(false);
     }
@@ -209,24 +244,24 @@ const HomePage = () => {
       {/* Search & AI Bar */}
       <div className="mb-8 flex flex-col md:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 w-5 h-5" />
+          <Search className="absolute start-4 top-1/2 -translate-y-1/2 text-zinc-400 w-5 h-5" />
           <input 
             type="text" 
-            placeholder="Search for restaurants or cuisines..."
-            className="w-full pl-12 pr-4 py-4 bg-zinc-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-black/5 transition-all"
+            placeholder={t.home.searchPlaceholder}
+            className="w-full ps-12 pe-4 py-4 bg-zinc-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-black/5 transition-all"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
         <button 
           onClick={() => {
-            const mood = prompt("How are you feeling today? (e.g., 'hungry for something spicy', 'looking for a healthy lunch')");
+            const mood = prompt(language === 'ar' ? "كيف تشعر اليوم؟ (مثلاً: 'جائع لشيء حار'، 'أبحث عن غداء صحي')" : "How are you feeling today? (e.g., 'hungry for something spicy', 'looking for a healthy lunch')");
             if (mood) askAi(mood);
           }}
           className="bg-black text-white px-6 py-4 rounded-2xl font-bold flex items-center gap-2 hover:scale-[1.02] transition-transform"
         >
           <Sparkles className="w-5 h-5" />
-          AI Meal Suggest
+          {language === 'ar' ? 'اقتراح وجبة بالذكاء الاصطناعي' : 'AI Meal Suggest'}
         </button>
       </div>
 
@@ -257,11 +292,11 @@ const HomePage = () => {
                 </button>
               </div>
               
-              <div className="min-h-[100px] text-zinc-700 leading-relaxed">
+              <div className="min-h-[100px] text-zinc-700 leading-relaxed text-start">
                 {isAiLoading ? (
                   <div className="flex flex-col items-center justify-center py-8 gap-4">
                     <div className="w-8 h-8 border-4 border-black border-t-transparent rounded-full animate-spin" />
-                    <p className="text-sm font-medium animate-pulse">Consulting the chefs...</p>
+                    <p className="text-sm font-medium animate-pulse">{language === 'ar' ? 'جاري استشارة الطهاة...' : 'Consulting the chefs...'}</p>
                   </div>
                 ) : (
                   <p>{aiResponse}</p>
@@ -273,7 +308,7 @@ const HomePage = () => {
                   onClick={() => setShowAiModal(false)}
                   className="w-full bg-zinc-100 py-3 rounded-xl font-bold mt-8 hover:bg-zinc-200 transition-colors"
                 >
-                  Got it!
+                  {language === 'ar' ? 'فهمت!' : 'Got it!'}
                 </button>
               )}
             </motion.div>
@@ -290,18 +325,17 @@ const HomePage = () => {
             transition={{ duration: 0.6 }}
           >
             <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 hero-gradient-text">
-              Cravings delivered <br className="hidden md:block" /> to your doorstep.
+              {t.home.heroTitle}
             </h1>
             <p className="text-zinc-500 text-lg md:text-xl max-w-2xl mx-auto mb-10">
-              The fastest way to get your favorite food from the best local restaurants, 
-              delivered with precision and care.
+              {t.home.heroSubtitle}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button className="bg-primary text-white px-10 py-4 rounded-full font-bold hover:scale-105 transition-transform shadow-lg shadow-primary/25">
-                Order Now
+                {language === 'ar' ? 'اطلب الآن' : 'Order Now'}
               </button>
               <Link to="/routes" className="bg-white text-black border border-zinc-200 px-10 py-4 rounded-full font-bold hover:bg-zinc-50 transition-colors">
-                Check Delivery Prices
+                {t.nav.deliveryPrices}
               </Link>
             </div>
           </motion.div>
@@ -1374,6 +1408,18 @@ const Dashboard = ({ onLogout }: { onLogout: () => void }) => {
 
 export default function App() {
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [language, setLanguage] = useState<Language>(() => {
+    return (localStorage.getItem('jeetk_lang') as Language) || 'en';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('jeetk_lang', language);
+    document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.lang = language;
+  }, [language]);
+
+  const t = translations[language];
+
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     return localStorage.getItem('jeetk_admin_auth') === 'true';
   });
@@ -1411,62 +1457,64 @@ export default function App() {
   const clearCart = () => setCart([]);
 
   return (
-    <Router>
-      <ScrollToTop />
-      <div className="min-h-screen bg-white font-sans text-zinc-900">
-        <Navbar 
-          cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)} 
-          isAuthenticated={isAuthenticated}
-        />
-        
-        <main>
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/restaurant/:id" element={<RestaurantPage addToCart={addToCart} />} />
-            <Route path="/cart" element={<CartPage cart={cart} updateQuantity={updateQuantity} clearCart={clearCart} />} />
-            <Route path="/tracking" element={<TrackingPage />} />
-            <Route path="/locations" element={<LocationsPage />} />
-            <Route path="/routes" element={<DeliveryRoutesPage />} />
-            <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
-            <Route path="/dashboard" element={<Dashboard onLogout={handleLogout} />} />
-          </Routes>
-        </main>
+    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+      <Router>
+        <ScrollToTop />
+        <div className={`min-h-screen bg-white font-sans text-zinc-900 ${language === 'ar' ? 'font-arabic' : ''}`}>
+          <Navbar 
+            cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)} 
+            isAuthenticated={isAuthenticated}
+          />
+          
+          <main>
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/restaurant/:id" element={<RestaurantPage addToCart={addToCart} />} />
+              <Route path="/cart" element={<CartPage cart={cart} updateQuantity={updateQuantity} clearCart={clearCart} />} />
+              <Route path="/tracking" element={<TrackingPage />} />
+              <Route path="/locations" element={<LocationsPage />} />
+              <Route path="/routes" element={<DeliveryRoutesPage />} />
+              <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
+              <Route path="/dashboard" element={<Dashboard onLogout={handleLogout} />} />
+            </Routes>
+          </main>
 
-        <footer className="bg-zinc-50 border-t border-black/5 py-12 mt-20">
-          <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div className="col-span-1 md:col-span-2">
-              <div className="text-2xl font-bold tracking-tighter flex items-center gap-2 mb-4">
-                <JeetkLogo className="w-10 h-10" />
-                <span className="logo-gradient">Jeetk</span>
+          <footer className="bg-zinc-50 border-t border-black/5 py-12 mt-20">
+            <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-8 text-start">
+              <div className="col-span-1 md:col-span-2">
+                <div className="text-2xl font-bold tracking-tighter flex items-center gap-2 mb-4">
+                  <JeetkLogo className="w-10 h-10" />
+                  <span className="logo-gradient">Jeetk</span>
+                </div>
+                <p className="text-zinc-500 max-w-sm">
+                  {t.footer.tagline}
+                </p>
               </div>
-              <p className="text-zinc-500 max-w-sm">
-                The fastest way to get your favorite food delivered. We partner with the best local restaurants to bring you quality meals.
-              </p>
+              <div>
+                <h4 className="font-bold mb-4">{t.footer.quickLinks}</h4>
+                <ul className="space-y-2 text-zinc-500 text-sm">
+                  <li><Link to="/">{t.footer.home}</Link></li>
+                  <li><Link to="/locations">{t.footer.locations}</Link></li>
+                  <li><Link to="/routes">{t.footer.deliveryPrices}</Link></li>
+                  <li><Link to="/cart">{t.footer.cart}</Link></li>
+                  <li><Link to="/tracking">{t.footer.trackOrder}</Link></li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-bold mb-4">{t.footer.support}</h4>
+                <ul className="space-y-2 text-zinc-500 text-sm">
+                  <li>{t.footer.helpCenter}</li>
+                  <li>{t.footer.contactUs}</li>
+                  <li>{t.footer.privacyPolicy}</li>
+                </ul>
+              </div>
             </div>
-            <div>
-              <h4 className="font-bold mb-4">Quick Links</h4>
-              <ul className="space-y-2 text-zinc-500 text-sm">
-                <li><Link to="/">Home</Link></li>
-                <li><Link to="/locations">Locations</Link></li>
-                <li><Link to="/routes">Delivery Prices</Link></li>
-                <li><Link to="/cart">Cart</Link></li>
-                <li><Link to="/tracking">Track Order</Link></li>
-              </ul>
+            <div className="max-w-7xl mx-auto px-4 pt-12 mt-12 border-t border-black/5 text-center text-zinc-400 text-xs">
+              © 2026 Jeetk. {t.footer.rights}
             </div>
-            <div>
-              <h4 className="font-bold mb-4">Support</h4>
-              <ul className="space-y-2 text-zinc-500 text-sm">
-                <li>Help Center</li>
-                <li>Contact Us</li>
-                <li>Privacy Policy</li>
-              </ul>
-            </div>
-          </div>
-          <div className="max-w-7xl mx-auto px-4 pt-12 mt-12 border-t border-black/5 text-center text-zinc-400 text-xs">
-            © 2026 Jeetk. All rights reserved.
-          </div>
-        </footer>
-      </div>
-    </Router>
+          </footer>
+        </div>
+      </Router>
+    </LanguageContext.Provider>
   );
 }
