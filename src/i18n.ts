@@ -2,6 +2,7 @@ export const translations = {
   en: {
     dir: 'ltr',
     lang: 'en',
+    title: 'Jeetk | Delivery Service',
     nav: {
       locations: 'Locations',
       deliveryPrices: 'Delivery Prices',
@@ -49,6 +50,7 @@ export const translations = {
   ar: {
     dir: 'rtl',
     lang: 'ar',
+    title: 'جيتك | خدمة توصيل طلبات',
     nav: {
       locations: 'المواقع',
       deliveryPrices: 'أسعار التوصيل',

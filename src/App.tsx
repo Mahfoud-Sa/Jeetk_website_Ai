@@ -1416,6 +1416,7 @@ export default function App() {
     localStorage.setItem('jeetk_lang', language);
     document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
     document.documentElement.lang = language;
+    document.title = translations[language].title;
   }, [language]);
 
   const t = translations[language];
