@@ -1,0 +1,5 @@
+{
+  "name": "Jeetk",
+  "description": "A premium, full-stack delivery platform featuring real-time tracking, AI-powered menu search, and a polished customer experience.",
+  "requestFramePermissions": ["geolocation"]
+}
