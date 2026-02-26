@@ -51,13 +51,50 @@ const ScrollToTop = () => {
 
 // --- Components ---
 
+const JeetkLogo = ({ className = "w-8 h-8" }: { className?: string }) => (
+  <svg 
+    viewBox="0 0 100 100" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg" 
+    className={className}
+  >
+    {/* Speed Trail / Liquid Effect */}
+    <circle cx="20" cy="50" r="6" fill="#F27D26" />
+    <circle cx="28" cy="40" r="4" fill="#F27D26" />
+    <circle cx="28" cy="60" r="5" fill="#F27D26" />
+    <path 
+      d="M20 50C20 50 35 35 50 35V65C35 65 20 50 20 50Z" 
+      fill="#F27D26" 
+    />
+    
+    {/* 3D Box / Package */}
+    <path 
+      d="M45 40L75 25L95 40L65 55L45 40Z" 
+      fill="#FFB366" 
+    /> {/* Top Face */}
+    <path 
+      d="M45 40L65 55V85L45 70V40Z" 
+      fill="#E67E22" 
+    /> {/* Left Face */}
+    <path 
+      d="M65 55L95 40V70L65 85V55Z" 
+      fill="#F39C12" 
+    /> {/* Right Face */}
+    
+    {/* Brand Stripe (The 'J' or 'I' shape) */}
+    <path 
+      d="M72 38L82 33V63L72 68V38Z" 
+      fill="white" 
+      fillOpacity="0.9"
+    />
+  </svg>
+);
+
 const Navbar = ({ cartCount, isAuthenticated }: { cartCount: number, isAuthenticated: boolean }) => (
   <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-black/5">
     <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
       <Link to="/" className="text-2xl font-bold tracking-tighter flex items-center gap-2">
-        <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-lg shadow-primary/20">
-          <Navigation className="w-5 h-5 text-white" />
-        </div>
+        <JeetkLogo className="w-10 h-10" />
         <span className="logo-gradient">Jeetk</span>
       </Link>
       
@@ -1399,9 +1436,7 @@ export default function App() {
           <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="col-span-1 md:col-span-2">
               <div className="text-2xl font-bold tracking-tighter flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-lg shadow-primary/20">
-                  <Navigation className="w-5 h-5 text-white" />
-                </div>
+                <JeetkLogo className="w-10 h-10" />
                 <span className="logo-gradient">Jeetk</span>
               </div>
               <p className="text-zinc-500 max-w-sm">
