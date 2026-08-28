@@ -31,6 +31,7 @@ import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { VerifyEmailPage } from './pages/VerifyEmailPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { UserMinimumDashboardPage } from './pages/UserMinimumDashboardPage';
+import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
 
 function AppContent() {
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -102,6 +103,11 @@ function AppContent() {
             <Route path="/register-delivery" element={<DeliveryRegistrationPage />} />
             <Route path="/delivery-welcome" element={<DeliveryWelcomePage />} />
             
+            {/* Standalone Google Play–Compliant Privacy Policy Route & Aliases */}
+            <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+            <Route path="/privacy" element={<PrivacyPolicyPage />} />
+            <Route path="/legal/privacy-policy" element={<PrivacyPolicyPage />} />
+            
             <Route path="/login" element={
               <PublicRoute>
                 <LoginPage />
@@ -158,9 +164,9 @@ function AppContent() {
             <div>
               <h4 className="font-bold mb-4">{t.footer.support}</h4>
               <ul className="space-y-2 text-zinc-500 text-sm">
-                <li>{t.footer.helpCenter}</li>
-                <li>{t.footer.contactUs}</li>
-                <li>{t.footer.privacyPolicy}</li>
+                <li><span className="cursor-default">{t.footer.helpCenter}</span></li>
+                <li><a href="mailto:support@jeetk.com" className="hover:text-black transition-colors">{t.footer.contactUs}</a></li>
+                <li><Link to="/privacy-policy" className="hover:text-violet-600 transition-colors font-medium text-zinc-700">{t.footer.privacyPolicy}</Link></li>
               </ul>
             </div>
           </div>
